@@ -10,6 +10,7 @@ import http from "http";
 const app = express();
 const server = http.createServer(app);
 const ioServer = new Server(server);
+const port = process.env.PORT || 3000;
 
 // all clients
 const clients = {};
@@ -40,6 +41,6 @@ ioServer.on("connection", (client) => {
   });
 });
 
-server.listen(3000, () => {
+server.listen(port, () => {
   console.log("listening on http://localhost:3000");
 });
