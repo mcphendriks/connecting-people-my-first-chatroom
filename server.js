@@ -8,39 +8,50 @@ import { Server } from "socket.io";
 import http from "http";
 
 const app = express();
-const server = http.createServer(app);
-const ioServer = new Server(server);
+const httpServer = http.createServer(app);
+const ioServer = new Server(httpServer);
 const port = process.env.PORT || 3000;
 
 // all clients
-const clients = {};
+const users = {};
+
 // Serveer client-side bestanden (je kan ook het HTML-bestand ophalen met een get)
 app.use(express.static(path.resolve("public")));
 
 // Start de socket.io server op
 ioServer.on("connection", (client) => {
-  client.on("new-user", (clientName) => {
-    clients[client.id] = clientName;
-    ioServer.emit("user-connected", clientName); // laat elke client een unieke naam meegeven
-  }); // start
+  // geef de naam mee van de gebruik die ingevoerd is in  de pop-up
+  client.on("new user", (clientName) => {
+    // geeft de gebruikers naam mee aan het specifiek id
+    users[client.id] = clientName;
+    client.emit("user connected", clientName);
+  });
   // Log de connectie naar console
-  console.log("a user connected");
-  client.on("disconnect", () => {
-    // Luister naar een disconnect van een gebruiker
-    console.log("user disconnected");
-  }); /*console.log(`user ${client.id} connected`)*/
-});
+  console.log(`user ${client.id} connected`);
 
-// Verstuur de chat message naar alle clients
-ioServer.on("connection", (client) => {
-  client.on("chat message", (messages) => {
-    console.log("message: " + messages);
-    // Broadcasting van message naar alle clients
-    // send the event from the server to the rest of the users.
-    ioServer.emit("chat message", messages);
+  // Luister naar een message van een gebruiker
+  client.on("chat message", (message) => {
+    client.emit("chat-message", {
+      message: message,
+      clientName: users[client.id],
+    });
+    // Log het ontvangen bericht
+    console.log(`user ${client.id} sent message: ${message}`);
+
+    // Verstuur het bericht naar alle clients
+    ioServer.emit("message", message);
   });
 });
 
-server.listen(port, () => {
+// Luister naar een disconnect van een gebruiker
+ioServer.on("disconnect", () => {
+  client.emit("user-disconnected", users[client.id]);
+  delete users[client.id];
+  // Log de disconnect
+  console.log(`user ${client.id} disconnected`);
+});
+
+// Start een http server op het ingestelde poortnummer en log de url
+httpServer.listen(port, () => {
   console.log("listening on http://localhost:3000");
 });
